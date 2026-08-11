@@ -40,6 +40,84 @@
             flex-direction: column;
         }
 
+        /* ID 鎖定畫面遮罩 */
+        #idLockOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .lock-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .lock-card h2 {
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .lock-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .lock-card input {
+            width: 100%;
+            padding: 12px;
+            background-color: #2c2c2c;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 6px;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            outline: none;
+        }
+
+        .lock-card input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .lock-card button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .lock-card button:hover {
+            background-color: #a370db;
+        }
+
+        /* 主應用程式內容（預設隱藏） */
+        #appContainer {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
         header {
             background-color: var(--surface-color);
             padding: 15px 20px;
@@ -75,14 +153,11 @@
             white-space: nowrap;
         }
 
-        .user-id-container input {
-            background: transparent;
-            border: none;
+        .user-id-container span {
             color: var(--text-primary);
             font-size: 0.95rem;
             padding: 4px;
-            width: 110px;
-            outline: none;
+            font-weight: bold;
         }
 
         .header-actions {
@@ -675,7 +750,7 @@
             border-style: dashed;
         }
 
-        ;.record-card.guessed::after {
+        .record-card.guessed::after {
             content: "⚠️ 估算";
             position: absolute;
             top: 13px;
@@ -695,89 +770,6 @@
             padding: 40px;
             color: var(--text-secondary);
             grid-column: 1 / -1;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            backdrop-filter: blur(5px);
-        }
-
-        .modal {
-            background: var(--surface-color);
-            width: 90%;
-            max-width: 1000px;
-            max-height: 85vh;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-            animation: modalFadeIn 0.3s ease;
-        }
-
-        @keyframes modalFadeIn {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        .modal-header {
-            padding: 20px;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-        }
-
-        .modal-title {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: var(--primary-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 1.rem;
-            cursor: pointer;
-            padding: 5px;
-        }
-
-        .modal-close:hover {
-            color: var(--text-primary);
-        }
-
-        .modal-body {
-            padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .modal-footer {
-            padding: 20px;
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
         }
 
         @media (max-width: 900px) {
@@ -803,94 +795,89 @@
 
 <body>
 
-    <header>
-        <h1>🎮 BOSS 重生時間追蹤器（雲端連線版）</h1>
-        <div class="header-actions">
-            <button id="undoBtn" class="undo-btn" onclick="undoLastAction()" style="display: none;">↩️ 復原上一步</button>
-            <div class="user-id-container">
-                <label for="userIdInput">👤 玩家 ID：</label>
-                <input type="text" id="userIdInput" placeholder="請輸入你的ID" onchange="saveUserId()">
-            </div>
-            <button onclick="importRecords()" class="transfer-btn import-btn">📥 匯入交接</button>
-            <button onclick="exportRecords()" class="transfer-btn export-btn">📤 匯出交接</button>
-        </div>
-    </header>
-
-    <div class="main-container">
-        <div class="left-panel" id="leftPanel">
-            <div class="input-area">
-                <div class="input-wrapper">
-                    <label for="bossSelect">當前選擇 BOSS</label>
-                    <select id="bossSelect"></select>
-                </div>
-
-                <div class="input-wrapper" style="flex: 0 0 100px;">
-                    <label for="channelInput">頻道 (Ch)</label>
-                    <input type="number" id="channelInput" placeholder="1" min="1">
-                </div>
-
-                <div class="btn-group">
-                    <button id="addBtn">確認擊殺</button>
-                    <button id="checkDropsBtn">🔍 查看掉落</button>
-                </div>
-            </div>
-
-            <div class="view-mode-bar">
-                <span style="font-size: 0.9rem; color: var(--text-secondary); font-weight: bold;">📋 排序方式：</span>
-                <button class="view-mode-btn active" id="btnSortByTime" onclick="setViewMode('time')">依重生時間</button>
-                <button class="view-mode-btn" id="btnSortByChannel" onclick="setViewMode('channel')">依頻道大小</button>
-                <button class="view-mode-btn" id="btnSortByCheck" onclick="setViewMode('check')">依巡視推薦</button>
-            </div>
-
-            <div class="batch-actions">
-                <label>
-                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"> 全選
-                </label>
-                <button id="batchDeleteBtn" class="batch-btn" onclick="deleteSelected()">
-                    <span>🗑️</span> 刪除選取項目 (<span id="selectedCount">0</span>)
-                </button>
-            </div>
-
-            <div id="recordGrid" class="record-grid"></div>
-            <div id="emptyMessage" class="empty-message">目前沒有追蹤紀錄，請從右側選擇 BOSS 並輸入頻道。</div>
-        </div>
-
-        <div class="right-panel">
-            <div class="panel-header">BOSS 列表 (點擊選擇)</div>
-            <div class="boss-grid" id="bossGrid"></div>
-            
-            <div class="ranking-tabs">
-                <button class="ranking-tab active" id="tabContrib" onclick="switchRankingTab('contrib')">🏆 不愛出門</button>
-                <button class="ranking-tab" id="tabKill" onclick="switchRankingTab('kill')">⚔️ 擊殺排行榜</button>
-            </div>
-
-            <div class="ranking-boss-filter">
-                <span style="font-size: 0.8rem; color: var(--text-secondary);">選擇目標 BOSS：</span>
-                <select id="rankingBossSelect" onchange="changeRankingBossFilter()"></select>
-            </div>
-            
-            <div class="ranking-container">
-                <div id="rankingList" class="ranking-list">
-                    <div style="text-align: center; color: var(--text-secondary); padding: 15px; font-size: 0.85rem;">載入中...</div>
-                </div>
-            </div>
+    <!-- 🔒 ID 輸入鎖定畫面（未填入 ID 時顯示） -->
+    <div id="idLockOverlay">
+        <div class="lock-card">
+            <h2>🎮 BOSS 追蹤器</h2>
+            <p>請先輸入您的遊戲 ID 才能解鎖並使用工具</p>
+            <input type="text" id="lockInputId" placeholder="請輸入您的 ID">
+            <button onclick="unlockApp()">確認進入</button>
         </div>
     </div>
 
-    <div id="dropModal" class="modal-overlay">
-        <div class="modal">
-            <div class="modal-header">
-                <div class="modal-title" id="modalTitle">BOSS 掉落資訊</div>
-                <button class="modal-close" onclick="closeModal()">×</button>
-            </div>
-            <div class="modal-body">
-                <div id="dropListContainer" class="modal-body-content"></div>
-                <div id="noDropDataMsg" style="display:none; text-align: center; padding: 20px; color: var(--text-secondary);">
-                    目前尚無此 BOSS 的詳細掉落資料。
+    <!-- 🚀 主應用程式內容（通過驗證後顯示） -->
+    <div id="appContainer">
+        <header>
+            <h1>🎮 BOSS 重生時間追蹤器（雲端連線版）</h1>
+            <div class="header-actions">
+                <button id="undoBtn" class="undo-btn" onclick="undoLastAction()" style="display: none;">↩️ 復原上一步</button>
+                <div class="user-id-container">
+                    <label for="userIdDisplay">👤 玩家 ID：</label>
+                    <span id="userIdDisplay"></span>
                 </div>
+                <button onclick="importRecords()" class="transfer-btn import-btn">📥 匯入交接</button>
+                <button onclick="exportRecords()" class="transfer-btn export-btn">📤 匯出交接</button>
             </div>
-            <div class="modal-footer">
-                <button style="background: var(--primary-color); border: none; color: #000; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer;" onclick="closeModal()">關閉</button>
+        </header>
+
+        <div class="main-container">
+            <div class="left-panel" id="leftPanel">
+                <div class="input-area">
+                    <div class="input-wrapper">
+                        <label for="bossSelect">當前選擇 BOSS</label>
+                        <select id="bossSelect"></select>
+                    </div>
+
+                    <div class="input-wrapper" style="flex: 0 0 100px;">
+                        <label for="channelInput">頻道 (Ch)</label>
+                        <input type="number" id="channelInput" placeholder="1" min="1">
+                    </div>
+
+                    <div class="btn-group">
+                        <button id="addBtn">確認擊殺</button>
+                        <button id="checkDropsBtn" style="display:none;">🔍 查看掉落</button>
+                    </div>
+                </div>
+
+                <div class="view-mode-bar">
+                    <span style="font-size: 0.9rem; color: var(--text-secondary); font-weight: bold;">📋 排序方式：</span>
+                    <button class="view-mode-btn active" id="btnSortByTime" onclick="setViewMode('time')">依重生時間</button>
+                    <button class="view-mode-btn" id="btnSortByChannel" onclick="setViewMode('channel')">依頻道大小</button>
+                    <button class="view-mode-btn" id="btnSortByCheck" onclick="setViewMode('check')">依巡視推薦</button>
+                </div>
+
+                <div class="batch-actions">
+                    <label>
+                        <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"> 全選
+                    </label>
+                    <button id="batchDeleteBtn" class="batch-btn" onclick="deleteSelected()">
+                        <span>🗑️</span> 刪除選取項目 (<span id="selectedCount">0</span>)
+                    </button>
+                </div>
+
+                <div id="recordGrid" class="record-grid"></div>
+                <div id="emptyMessage" class="empty-message">目前沒有追蹤紀錄，請從右側選擇 BOSS 並輸入頻道。</div>
+            </div>
+
+            <div class="right-panel">
+                <div class="panel-header">BOSS 列表 (點擊選擇)</div>
+                <div class="boss-grid" id="bossGrid"></div>
+                
+                <div class="ranking-tabs">
+                    <button class="ranking-tab active" id="tabContrib" onclick="switchRankingTab('contrib')">🏆 不愛出門</button>
+                    <button class="ranking-tab" id="tabKill" onclick="switchRankingTab('kill')">⚔️ 擊殺排行榜</button>
+                </div>
+
+                <div class="ranking-boss-filter">
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">選擇目標 BOSS：</span>
+                    <select id="rankingBossSelect" onchange="changeRankingBossFilter()"></select>
+                </div>
+                
+                <div class="ranking-container">
+                    <div id="rankingList" class="ranking-list">
+                        <div style="text-align: center; color: var(--text-secondary); padding: 15px; font-size: 0.85rem;">載入中...</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -911,7 +898,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const recordsRef = db.ref('records');
-        const statsRef = db.ref('stats');           
+        const statsRef = db.ref('stats');          
         const killStatsRef = db.ref('killStats');   
         const detailedHistoryRef = db.ref('detailedHistory'); 
 
@@ -927,6 +914,7 @@
 
         let lastActionSnapshot = null;
         let isActionLocked = false;
+        let currentUserId = "";
 
         const bossSelect = document.getElementById('bossSelect');
         const channelInput = document.getElementById('channelInput');
@@ -938,8 +926,10 @@
         const batchDeleteBtn = document.getElementById('batchDeleteBtn');
         const selectedCountSpan = document.getElementById('selectedCount');
         const leftPanel = document.getElementById('leftPanel');
-        const dropModal = document.getElementById('dropModal');
-        const userIdInput = document.getElementById('userIdInput');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const lockInputId = document.getElementById('lockInputId');
+        const idLockOverlay = document.getElementById('idLockOverlay');
+        const appContainer = document.getElementById('appContainer');
         const btnSortByTime = document.getElementById('btnSortByTime');
         const btnSortByChannel = document.getElementById('btnSortByChannel');
         const btnSortByCheck = document.getElementById('btnSortByCheck');
@@ -949,14 +939,40 @@
         const rankingBossSelect = document.getElementById('rankingBossSelect');
         const undoBtn = document.getElementById('undoBtn');
 
-        function init() {
-            let savedId = localStorage.getItem('bossTrackerUserId');
-            if (!savedId) {
-                savedId = '玩家' + Math.floor(Math.random() * 900 + 100);
-                localStorage.setItem('bossTrackerUserId', savedId);
+        // 檢查本地是否有儲存的 ID，若有則直接自動解鎖
+        function checkSavedUserId() {
+            const savedId = localStorage.getItem('bossTrackerUserId');
+            if (savedId) {
+                currentUserId = savedId;
+                userIdDisplay.textContent = savedId;
+                idLockOverlay.style.display = 'none';
+                appContainer.style.display = 'flex';
+                initApp();
             }
-            userIdInput.value = savedId;
+        }
 
+        // 點擊解鎖按鈕
+        window.unlockApp = function() {
+            const idVal = lockInputId.value.trim();
+            if (!idVal) {
+                alert('⚠️ 請先輸入有效的 ID 才能使用！');
+                lockInputId.focus();
+                return;
+            }
+            currentUserId = idVal;
+            localStorage.setItem('bossTrackerUserId', idVal);
+            userIdDisplay.textContent = idVal;
+            idLockOverlay.style.display = 'none';
+            appContainer.style.display = 'flex';
+            initApp();
+        };
+
+        // 按 Enter 快速解鎖
+        lockInputId.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') unlockApp();
+        });
+
+        function initApp() {
             const savedFavs = localStorage.getItem('favoriteBosses');
             if (savedFavs) {
                 favoriteBosses = new Set(JSON.parse(savedFavs));
@@ -1148,13 +1164,8 @@
             renderRecords();
         };
 
-        function saveUserId() {
-            const id = userIdInput.value.trim() || '無名玩家';
-            localStorage.setItem('bossTrackerUserId', id);
-        }
-
         function getCurrentUserId() {
-            return userIdInput.value.trim() || localStorage.getItem('bossTrackerUserId') || '無名玩家';
+            return currentUserId || localStorage.getItem('bossTrackerUserId') || '無名玩家';
         }
 
         function saveAndSync() {
@@ -1437,7 +1448,6 @@
             } else if (currentViewMode === 'channel') {
                 displayRecords.sort((a, b) => parseInt(a.channel) - parseInt(b.channel));
             } else if (currentViewMode === 'check') {
-                // 💡 修正後的「依巡視推薦」智慧評分排序邏輯
                 displayRecords.sort((a, b) => {
                     const getScore = (rec) => {
                         let score = 0;
@@ -1445,28 +1455,25 @@
                         const latestTime = new Date(rec.latestTime).getTime();
                         const lastChecked = rec.lastCheckedTime ? new Date(rec.lastCheckedTime).getTime() : 0;
 
-                        // 1. 絕對優先級：已過最晚時間 > 已進入最早重生(Ready)
                         if (now >= latestTime) {
-                            score += 1000000; // 壓倒性高分，確保過期王永遠在最前
+                            score += 1000000; 
                         } else if (now >= earliestTime) {
-                            score += 500000;  // 進入 Ready 區間的高分
+                            score += 500000;  
                         } else {
-                            // 2. 時間緊迫度：距離「最晚重生時間」越近，分數越高（確保快生出來的王絕對優先）
                             const timeToLatest = latestTime - now;
                             score += Math.max(0, 100000 - (timeToLatest / 1000)); 
                         }
 
-                        // 3. 巡視微調（次要條件）：當時間還很久時，很久沒巡視的給予微幅加分（設嚴格上限，絕對不會超越時間緊迫度）
                         if (!lastChecked) {
-                            score += 200; // 從未巡視小幅加分
+                            score += 200; 
                         } else {
                             const minutesSinceChecked = (now - lastChecked) / 60000;
-                            score += Math.min(minutesSinceChecked * 0.5, 150); // 設上限，確保只在同時間時微調
+                            score += Math.min(minutesSinceChecked * 0.5, 150); 
                         }
 
                         return score;
                     };
-                    return getScore(b) - getScore(a); // 降冪排序，分數高的排最前面
+                    return getScore(b) - getScore(a); 
                 });
             }
 
@@ -1590,7 +1597,7 @@
                     div.style.color = 'var(--text-secondary)';
                 } else if (diffLatest > 0) {
                     const minsLatest = Math.ceil(diffLatest / 60000); 
-                    div.innerHTML = `最晚重生 ${minsLatest} 分`;     
+                    div.innerHTML = `最晚重生 ${minsLatest} 分`;    
                     div.className = 'record-status ready';
                     div.style.color = 'var(--secondary-color)';
                 } else {
@@ -1681,7 +1688,8 @@
             }
         });
         
-        init();
+        // 頁面載入時先執行檢查
+        checkSavedUserId();
     </script>
 </body>
 
