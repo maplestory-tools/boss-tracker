@@ -1547,7 +1547,7 @@
             // 顯示巡視次數與最後巡視時間
             const checkCountVal = record.checkCount || 0;
             const checkedHtml = record.lastCheckedTime 
-                ? `<br><span style="color:#4CAF50; font-size:0.85rem; font-weight:bold;">👀 最後巡視: ${formatTime(record.lastCheckedTime)} ( ${checkCountVal} )</span>` 
+                ? `<br><span style="color:#4CAF50; font-size:0.85rem; font-weight:bold;">最後巡視：${formatTime(record.lastCheckedTime)} (${checkCountVal})</span>` 
                 : (checkCountVal > 0 ? `<br><span style="color:#4CAF50; font-size:0.85rem; font-weight:bold;">👀 已巡視 ${checkCountVal} 次</span>` : '');
 
             const userHtml = record.lastUser ? `<span style="font-size:0.75rem; color:var(--primary-color); float:right;">👤 ${record.lastUser}</span>` : '';
