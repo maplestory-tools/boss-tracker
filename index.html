@@ -939,7 +939,6 @@
         const rankingBossSelect = document.getElementById('rankingBossSelect');
         const undoBtn = document.getElementById('undoBtn');
 
-        // 檢查本地是否有儲存的 ID，若有則直接自動解鎖
         function checkSavedUserId() {
             const savedId = localStorage.getItem('bossTrackerUserId');
             if (savedId) {
@@ -951,7 +950,6 @@
             }
         }
 
-        // 點擊解鎖按鈕
         window.unlockApp = function() {
             const idVal = lockInputId.value.trim();
             if (!idVal) {
@@ -967,7 +965,6 @@
             initApp();
         };
 
-        // 按 Enter 快速解鎖
         lockInputId.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') unlockApp();
         });
@@ -1283,6 +1280,7 @@
                 earliestTime: earliest.toISOString(),
                 latestTime: latest.toISOString(),
                 isGuessed: false,
+                checkCount: 0, // 初始巡視次數為 0
                 lastUser: currentId,
                 lastActionUser: currentId,
                 lastActionTime: Date.now()
@@ -1321,6 +1319,7 @@
                     record.earliestTime = new Date(now.getTime() + boss.min * 60000).toISOString();
                     record.latestTime = new Date(now.getTime() + boss.max * 60000).toISOString();
                     record.isGuessed = false; 
+                    record.checkCount = 0; // 刷新擊殺時重置巡視次數
                     delete record.lastCheckedTime;
                     record.lastUser = currentId;
                     
@@ -1362,6 +1361,7 @@
             if (record) {
                 saveActionSnapshot(); 
                 record.lastCheckedTime = new Date().toISOString();
+                record.checkCount = (record.checkCount || 0) + 1; // 每次點擊巡視次數 +1
                 record.lastUser = currentId;
 
                 handleContribution(record.bossName, record, currentId);
@@ -1543,7 +1543,13 @@
 
             const bossData = bosses.find(b => b.name === record.bossName);
             const imgSrc = bossData ? bossData.img : (record.bossImg || '');
-            const checkedHtml = record.lastCheckedTime ? `<br><span style="color:#4CAF50; font-size:0.85rem; font-weight:bold;">👀 最後巡視: ${formatTime(record.lastCheckedTime)}</span>` : '';
+            
+            // 顯示巡視次數與最後巡視時間
+            const checkCountVal = record.checkCount || 0;
+            const checkedHtml = record.lastCheckedTime 
+                ? `<br><span style="color:#4CAF50; font-size:0.85rem; font-weight:bold;">👀 最後巡視: ${formatTime(record.lastCheckedTime)} ( ${checkCountVal} )</span>` 
+                : (checkCountVal > 0 ? `<br><span style="color:#4CAF50; font-size:0.85rem; font-weight:bold;">👀 已巡視 ${checkCountVal} 次</span>` : '');
+
             const userHtml = record.lastUser ? `<span style="font-size:0.75rem; color:var(--primary-color); float:right;">👤 ${record.lastUser}</span>` : '';
 
             card.innerHTML = `
@@ -1644,6 +1650,7 @@
                                 bossName: boss.name,
                                 killTime: new Date(parseInt(timeMs)).toISOString(),
                                 isGuessed: gFlag === '1',
+                                checkCount: 0,
                                 lastUser: getCurrentUserId()
                             });
                         }
@@ -1688,7 +1695,6 @@
             }
         });
         
-        // 頁面載入時先執行檢查
         checkSavedUserId();
     </script>
 </body>
