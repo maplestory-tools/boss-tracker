@@ -1691,31 +1691,51 @@
                 displayRecords.sort((a, b) => parseInt(a.channel) - parseInt(b.channel));
             } else if (currentViewMode === 'check') {
                 displayRecords.sort((a, b) => {
-                    const getScore = (rec) => {
-                        let score = 0;
+                    const getStatusTier = (rec) => {
                         const earliestTime = new Date(rec.earliestTime).getTime();
                         const latestTime = new Date(rec.latestTime).getTime();
-                        const lastChecked = rec.lastCheckedTime ? new Date(rec.lastCheckedTime).getTime() : 0;
+                        const hasChecked = !!rec.lastCheckedTime;
 
                         if (now >= latestTime) {
-                            score += 1000000; 
-                        } else if (now >= earliestTime) {
-                            score += 500000;  
+                            return 1; // 1. 已過期 (最優先)
+                        } else if (now >= earliestTime && !hasChecked) {
+                            return 2; // 2. 已重生 (未巡視)
+                        } else if (now >= earliestTime && hasChecked) {
+                            return 3; // 3. 已重生 (已巡視)
                         } else {
-                            const timeToLatest = latestTime - now;
-                            score += Math.max(0, 100000 - (timeToLatest / 1000)); 
+                            return 4; // 4. 尚未重生 (最後)
                         }
-
-                        if (!lastChecked) {
-                            score += 200; 
-                        } else {
-                            const minutesSinceChecked = (now - lastChecked) / 60000;
-                            score += Math.min(minutesSinceChecked * 0.5, 150); 
-                        }
-
-                        return score;
                     };
-                    return getScore(b) - getScore(a); 
+
+                    const tierA = getStatusTier(a);
+                    const tierB = getStatusTier(b);
+
+                    // 階層不同時，層級高的排在前面
+                    if (tierA !== tierB) {
+                        return tierA - tierB;
+                    }
+
+                    // 相同階層時的細部排序規則
+                    const earliestA = new Date(a.earliestTime).getTime();
+                    const earliestB = new Date(b.earliestTime).getTime();
+                    const checkA = a.lastCheckedTime ? new Date(a.lastCheckedTime).getTime() : 0;
+                    const checkB = b.lastCheckedTime ? new Date(b.lastCheckedTime).getTime() : 0;
+                    const latestA = new Date(a.latestTime).getTime();
+                    const latestB = new Date(b.latestTime).getTime();
+
+                    if (tierA === 1) {
+                        // 1. 已過期：越早過期的排越前面 (或依最早重生時間)
+                        return earliestA - earliestB;
+                    } else if (tierA === 2) {
+                        // 2. 已重生（未巡視）：越早重生的排越前面
+                        return earliestA - earliestB;
+                    } else if (tierA === 3) {
+                        // 3. 已重生（已巡視）：越早巡視的排越前面 (時間戳記越小越前)
+                        return checkA - checkB;
+                    } else {
+                        // 4. 尚未重生：越快到最晚重生時間的排越前面
+                        return latestA - latestB;
+                    }
                 });
             }
 
