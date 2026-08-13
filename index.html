@@ -1570,13 +1570,18 @@
                 const boss = bosses.find(b => b.name === record.bossName);
                 if (boss) {
                     saveActionSnapshot(); 
+                    
+                    // 【新增】重新整理時，若該卡片的歷史足跡正在展開，強制將其關閉
+                    const dropdown = document.getElementById(`history-dropdown-${id}`);
+                    if (dropdown) dropdown.style.display = 'none';
+
                     record.killTime = now.toISOString();
                     record.earliestTime = new Date(now.getTime() + boss.min * 60000).toISOString();
                     record.latestTime = new Date(now.getTime() + boss.max * 60000).toISOString();
                     record.isGuessed = false; 
                     record.checkCount = 0; 
                     record.lastCheckTimestamp = 0;
-                    record.lastCheckedTime = null; // [FIX] 改用 null 賦值，修復物件結構被 delete 破壞的問題
+                    record.lastCheckedTime = null; 
                     record.lastUser = currentId;
                     
                     handleContribution(record.bossName, record, currentId);
@@ -1594,6 +1599,11 @@
                 const boss = bosses.find(b => b.name === record.bossName);
                 if (boss) {
                     saveActionSnapshot(); 
+
+                    // 【新增】盲猜重置時，若該卡片的歷史足跡正在展開，強制將其關閉
+                    const dropdown = document.getElementById(`history-dropdown-${id}`);
+                    if (dropdown) dropdown.style.display = 'none';
+
                     const earliest = new Date(record.earliestTime).getTime();
                     const latest = new Date(record.latestTime).getTime();
                     const midpoint = new Date((earliest + latest) / 2);
@@ -1601,9 +1611,9 @@
                     record.earliestTime = new Date(midpoint.getTime() + boss.min * 60000).toISOString();
                     record.latestTime = new Date(midpoint.getTime() + boss.max * 60000).toISOString();
                     record.isGuessed = true; 
-                    record.checkCount = 0; // [FIX] 盲猜必須歸零次數
-                    record.lastCheckTimestamp = 0; // [FIX] 盲猜必須歸零時間戳
-                    record.lastCheckedTime = null; // [FIX] 改用 null 賦值，修復物件結構被 delete 破壞的問題
+                    record.checkCount = 0; 
+                    record.lastCheckTimestamp = 0; 
+                    record.lastCheckedTime = null; 
                     record.lastUser = currentId;
 
                     handleContribution(record.bossName, record, currentId);
@@ -2023,18 +2033,15 @@
             const dropdown = document.getElementById(`history-dropdown-${recordId}`);
             if (!dropdown) return;
 
-            // 如果點擊的是已經展開的卡片，就將其收合
             if (dropdown.style.display === 'block') {
                 dropdown.style.display = 'none';
                 return;
             }
 
-            // 關閉其他所有展開中的下拉面板
             document.querySelectorAll('.card-history-dropdown').forEach(d => {
                 d.style.display = 'none';
             });
 
-            // 展開當前點擊的卡片
             dropdown.style.display = 'block';
 
             const record = records.find(r => r.id === recordId);
@@ -2045,9 +2052,24 @@
 
             let entries = [];
             if (globalHistoryData) {
-                entries = Object.values(globalHistoryData).filter(entry => 
+                // 1. 先抓出該 BOSS 與該頻道的全部歷史
+                const allEntries = Object.values(globalHistoryData).filter(entry => 
                     entry.boss === record.bossName && String(entry.channel) === String(record.channel)
-                ).reverse();
+                );
+
+                // 2. 找出最近一次「重新開始生命週期」的時間點（擊殺、刷新、或盲猜重置）
+                // 我們反向尋找最近的一個重置動作
+                let resetTimestamp = 0;
+                const sortedByTime = [...allEntries].sort((a, b) => b.timestamp - a.timestamp);
+                for (let entry of sortedByTime) {
+                    if (entry.action === 'kill' || entry.action === 'refresh' || entry.action === 'guess') {
+                        resetTimestamp = entry.timestamp;
+                        break;
+                    }
+                }
+
+                // 3. 只留下「大於等於」這個重置時間點的紀錄（也就是當前這輪的足跡）
+                entries = allEntries.filter(entry => entry.timestamp >= resetTimestamp).reverse();
             }
 
             let html = '<div style="font-weight:bold; margin-bottom:4px; color:var(--primary-color);">📜 過往巡視與操作足跡：</div>';
@@ -2060,7 +2082,7 @@
                         <span>👀 標記巡視 (${userStr})</span>
                         <span>最後記錄 ${timeStr}</span>
                     </div>`;
-                    html += `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">（註：此為目前快取狀態，無更早的詳細歷史足跡）</div>`;
+                    html += `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">（註：此為目前快取狀態）</div>`;
                     dropdown.innerHTML = html;
                 } else {
                     dropdown.innerHTML = '此頻道尚無詳細足跡';
