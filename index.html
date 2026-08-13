@@ -1746,8 +1746,10 @@
                             return 5; // 5. 已重生（未巡視、盲猜估算）
                         } else if (now >= earliestTime && hasChecked && isGuessed) {
                             return 6; // 6. 已重生（已巡視、盲猜估算）
+                        } else if (now < earliestTime && !isGuessed) {
+                            return 7; // 7. 尚未重生（真實回報）
                         } else {
-                            return 7; // 7. 尚未重生
+                            return 8; // 8. 尚未重生（盲猜估算）
                         }
                     };
 
@@ -1784,8 +1786,11 @@
                     } else if (tierA === 6) {
                         // 6. 已重生（已巡視、盲猜估算）：越早巡視的排越前面
                         return checkA - checkB;
+                    } else if (tierA === 7) {
+                        // 7. 尚未重生（真實回報）：越快到最晚重生時間的排越前面
+                        return latestA - latestB;
                     } else {
-                        // 7. 尚未重生：越快到最晚重生時間的排越前面
+                        // 8. 尚未重生（盲猜估算）：越快到最晚重生時間的排越前面
                         return latestA - latestB;
                     }
                 });
