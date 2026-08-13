@@ -746,11 +746,35 @@
             position: relative;
             transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            z-index: 1; /* 預設層級 */
         }
 
+        /* 只要卡片正處於「展開選單」的狀態，層級直接拉到最高 (10000)，不管滑鼠在哪裡都不會被蓋住 */
+        .record-card:has(.card-history-dropdown[style*="block"]) {
+            z-index: 10000 !important;
+        }
+
+        /* 一般滑鼠移上去時的 hover 層級保持正常即可 */
         .record-card:hover {
+            z-index: 10;
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-history-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: #1a1a1a;
+            border: 1px solid var(--primary-color);
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            padding: 12px;
+            z-index: 10001; /* 確保下拉選單永遠高於一切 */
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.8);
+            max-height: 180px;
+            overflow-y: auto;
         }
 
         .record-card.selected {
@@ -1511,6 +1535,7 @@
                 isGuessed: false,
                 checkCount: 0, 
                 lastCheckTimestamp: 0,
+                lastCheckedTime: null, // [FIX] 明確初始化為 null，避免 undefined
                 lastUser: currentId,
                 lastActionUser: currentId,
                 lastActionTime: Date.now()
@@ -1551,7 +1576,7 @@
                     record.isGuessed = false; 
                     record.checkCount = 0; 
                     record.lastCheckTimestamp = 0;
-                    delete record.lastCheckedTime;
+                    record.lastCheckedTime = null; // [FIX] 改用 null 賦值，修復物件結構被 delete 破壞的問題
                     record.lastUser = currentId;
                     
                     handleContribution(record.bossName, record, currentId);
@@ -1576,7 +1601,9 @@
                     record.earliestTime = new Date(midpoint.getTime() + boss.min * 60000).toISOString();
                     record.latestTime = new Date(midpoint.getTime() + boss.max * 60000).toISOString();
                     record.isGuessed = true; 
-                    delete record.lastCheckedTime;
+                    record.checkCount = 0; // [FIX] 盲猜必須歸零次數
+                    record.lastCheckTimestamp = 0; // [FIX] 盲猜必須歸零時間戳
+                    record.lastCheckedTime = null; // [FIX] 改用 null 賦值，修復物件結構被 delete 破壞的問題
                     record.lastUser = currentId;
 
                     handleContribution(record.bossName, record, currentId);
@@ -1695,22 +1722,28 @@
                         const earliestTime = new Date(rec.earliestTime).getTime();
                         const latestTime = new Date(rec.latestTime).getTime();
                         const hasChecked = !!rec.lastCheckedTime;
+                        const isGuessed = !!rec.isGuessed;
 
-                        if (now >= latestTime) {
-                            return 1; // 1. 已過期 (最優先)
-                        } else if (now >= earliestTime && !hasChecked) {
-                            return 2; // 2. 已重生 (未巡視)
-                        } else if (now >= earliestTime && hasChecked) {
-                            return 3; // 3. 已重生 (已巡視)
+                        if (now >= latestTime && !isGuessed) {
+                            return 1; // 1. 已過期（真實回報）
+                        } else if (now >= earliestTime && !hasChecked && !isGuessed) {
+                            return 2; // 2. 已重生（未巡視、真實回報）
+                        } else if (now >= earliestTime && hasChecked && !isGuessed) {
+                            return 3; // 3. 已重生（已巡視、真實回報）
+                        } else if (now >= latestTime && isGuessed) {
+                            return 4; // 4. 已過期（盲猜估算）
+                        } else if (now >= earliestTime && !hasChecked && isGuessed) {
+                            return 5; // 5. 已重生（未巡視、盲猜估算）
+                        } else if (now >= earliestTime && hasChecked && isGuessed) {
+                            return 6; // 6. 已重生（已巡視、盲猜估算）
                         } else {
-                            return 4; // 4. 尚未重生 (最後)
+                            return 7; // 7. 尚未重生
                         }
                     };
 
                     const tierA = getStatusTier(a);
                     const tierB = getStatusTier(b);
 
-                    // 階層不同時，層級高的排在前面
                     if (tierA !== tierB) {
                         return tierA - tierB;
                     }
@@ -1724,16 +1757,25 @@
                     const latestB = new Date(b.latestTime).getTime();
 
                     if (tierA === 1) {
-                        // 1. 已過期：越早過期的排越前面 (或依最早重生時間)
+                        // 1. 已過期（真實回報）：越早過期的排越前面
                         return earliestA - earliestB;
                     } else if (tierA === 2) {
-                        // 2. 已重生（未巡視）：越早重生的排越前面
+                        // 2. 已重生（未巡視、真實回報）：越早重生的排越前面
                         return earliestA - earliestB;
                     } else if (tierA === 3) {
-                        // 3. 已重生（已巡視）：越早巡視的排越前面 (時間戳記越小越前)
+                        // 3. 已重生（已巡視、真實回報）：越早巡視的排越前面
+                        return checkA - checkB;
+                    } else if (tierA === 4) {
+                        // 4. 已過期（盲猜估算）：越早過期的排越前面
+                        return earliestA - earliestB;
+                    } else if (tierA === 5) {
+                        // 5. 已重生（未巡視、盲猜估算）：越早重生的排越前面
+                        return earliestA - earliestB;
+                    } else if (tierA === 6) {
+                        // 6. 已重生（已巡視、盲猜估算）：越早巡視的排越前面
                         return checkA - checkB;
                     } else {
-                        // 4. 尚未重生：越快到最晚重生時間的排越前面
+                        // 7. 尚未重生：越快到最晚重生時間的排越前面
                         return latestA - latestB;
                     }
                 });
@@ -1807,12 +1849,17 @@
             const imgSrc = bossData ? bossData.img : (record.bossImg || '');
             
             const checkCountVal = record.checkCount || 0;
-            const checkedHtml = record.lastCheckedTime 
-                ? `<br><span style="color:#4CAF50; font-size:0.85rem; font-weight:bold;">最後巡視：${formatTime(record.lastCheckedTime)} (${checkCountVal})</span>` 
-                : (checkCountVal > 0 ? `<br><span style="color:#4CAF50; font-size:0.85rem; font-weight:bold;">👀 已巡視 ${checkCountVal} 次</span>` : '');
+            let checkedHtml = '';
 
+            if (record.lastCheckedTime) {
+                checkedHtml = `<br><span style="color:#4CAF50; font-size:0.85rem; font-weight:bold; cursor:pointer;" onclick="toggleCardHistory(this, ${record.id})" title="點擊展開過往紀錄">最後巡視：${formatTime(record.lastCheckedTime)} (${checkCountVal})</span>`;
+            } else if (checkCountVal > 0) {
+                checkedHtml = `<br><span style="color:#4CAF50; font-size:0.85rem; font-weight:bold; cursor:pointer;" onclick="toggleCardHistory(this, ${record.id})" title="點擊展開過往紀錄">👀 已巡視 ${checkCountVal} 次</span>`;
+            }
+            
             const userHtml = record.lastUser ? `<span style="font-size:0.75rem; color:var(--primary-color); float:right;">👤 ${record.lastUser}</span>` : '';
 
+            // 結尾處正確整合卡片資訊與隱藏的歷史下拉容器
             card.innerHTML = `
                 <input type="checkbox" class="record-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleSelection(${record.id})">
                 <div class="record-img">
@@ -1830,6 +1877,11 @@
                     </div>
                     <div class="record-status waiting" data-earliest="${record.earliestTime}" data-latest="${record.latestTime}">
                         計算中...
+                    </div>
+                    
+                    <!-- 卡片內部展開的歷史足跡容器 -->
+                    <div class="card-history-dropdown" id="history-dropdown-${record.id}" style="display:none; margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-color); font-size:0.8rem; color:var(--text-secondary);">
+                        載入中...
                     </div>
                     
                     <button class="action-btn guess-btn-card" onclick="guessRecord(${record.id})" title="盲猜重置">
@@ -1913,6 +1965,7 @@
                                 isGuessed: gFlag === '1',
                                 checkCount: 0,
                                 lastCheckTimestamp: 0,
+                                lastCheckedTime: null, // [FIX] 匯入防呆，賦予 null
                                 lastUser: getCurrentUserId()
                             });
                         }
@@ -1926,6 +1979,13 @@
                     let updatedCount = 0, addedCount = 0;
                     const currentId = getCurrentUserId();
                     parsedRecords.forEach(newRecord => {
+                        // [FIX] 防呆機制：如果匯入的舊資料有「有次數卻沒時間」的殘留缺陷，強制清除次數
+                        if (newRecord.checkCount > 0 && !newRecord.lastCheckedTime) {
+                            newRecord.checkCount = 0;
+                            newRecord.lastCheckTimestamp = 0;
+                            newRecord.lastCheckedTime = null;
+                        }
+
                         const boss = bosses.find(b => b.name === newRecord.bossName);
                         if (boss) {
                             newRecord.bossImg = boss.img;
@@ -1958,6 +2018,72 @@
         });
         
         checkSavedUserId();
+
+        window.toggleCardHistory = function(element, recordId) {
+            const dropdown = document.getElementById(`history-dropdown-${recordId}`);
+            if (!dropdown) return;
+
+            // 如果點擊的是已經展開的卡片，就將其收合
+            if (dropdown.style.display === 'block') {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            // 關閉其他所有展開中的下拉面板
+            document.querySelectorAll('.card-history-dropdown').forEach(d => {
+                d.style.display = 'none';
+            });
+
+            // 展開當前點擊的卡片
+            dropdown.style.display = 'block';
+
+            const record = records.find(r => r.id === recordId);
+            if (!record) {
+                dropdown.innerHTML = '找不到該頻道紀錄';
+                return;
+            }
+
+            let entries = [];
+            if (globalHistoryData) {
+                entries = Object.values(globalHistoryData).filter(entry => 
+                    entry.boss === record.bossName && String(entry.channel) === String(record.channel)
+                ).reverse();
+            }
+
+            let html = '<div style="font-weight:bold; margin-bottom:4px; color:var(--primary-color);">📜 過往巡視與操作足跡：</div>';
+
+            if (entries.length === 0) {
+                if (record.lastCheckedTime) {
+                    const timeStr = formatTime(record.lastCheckedTime);
+                    const userStr = record.lastUser || '未知';
+                    html += `<div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                        <span>👀 標記巡視 (${userStr})</span>
+                        <span>最後記錄 ${timeStr}</span>
+                    </div>`;
+                    html += `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">（註：此為目前快取狀態，無更早的詳細歷史足跡）</div>`;
+                    dropdown.innerHTML = html;
+                } else {
+                    dropdown.innerHTML = '此頻道尚無詳細足跡';
+                }
+                return;
+            }
+
+            entries.forEach(entry => {
+                const timeStr = new Date(entry.timestamp).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+                let actionText = '📌 動作';
+                if (entry.action === 'kill') actionText = '⚔️ 回報擊殺';
+                else if (entry.action === 'refresh') actionText = '🔄 再次擊殺';
+                else if (entry.action === 'guess') actionText = '⚠️ 盲猜重置';
+                else if (entry.action === 'check') actionText = '👀 標記巡視';
+
+                html += `<div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                    <span>${actionText} (${entry.user})</span>
+                    <span>${entry.date.slice(5)} ${timeStr}</span>
+                </div>`;
+            });
+
+            dropdown.innerHTML = html;
+        };
     </script>
 </body>
 
